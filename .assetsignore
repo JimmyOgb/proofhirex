@@ -1,0 +1,11 @@
+node_modules
+.wrangler
+.git
+dist
+build
+*.log
+.env
+**/*.map
+package-lock.json
+yarn.lock
+Add .assetsignore to fix large file error
