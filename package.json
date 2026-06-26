@@ -3,8 +3,16 @@
   "version": "1.0.0",
   "description": "GenLayer Intelligent Contract powering a trustless freelance marketplace — AI consensus generates milestones, validates work, adjudicates disputes, and manages reputation on-chain.",
   "keywords": [
-    "genlayer", "freelance", "marketplace", "blockchain", "ai",
-    "consensus", "web3", "escrow", "reputation", "dispute-resolution"
+    "genlayer",
+    "freelance",
+    "marketplace",
+    "blockchain",
+    "ai",
+    "consensus",
+    "web3",
+    "escrow",
+    "reputation",
+    "dispute-resolution"
   ],
   "homepage": "https://studio.genlayer.com/?import-contract=0x9A79f3e670C91a797E52369c65878215CB7Bde24",
   "repository": {
@@ -16,6 +24,11 @@
     "dev": "npx serve frontend/",
     "start": "npx serve frontend/",
     "deploy:netlify": "netlify deploy --prod --dir frontend/",
-    "deploy:vercel": "vercel --prod"
+    "deploy:vercel": "vercel --prod",
+    "deploy": "wrangler deploy",
+    "preview": "wrangler dev"
+  },
+  "devDependencies": {
+    "wrangler": "^4.105.0"
   }
 }
