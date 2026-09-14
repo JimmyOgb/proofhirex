@@ -11,6 +11,7 @@ ProofHireX is an autonomous, decentralized protocol for trustless freelance, con
 * **Network:** GenLayer StudioNet (Chain ID: `61999`)
 * **RPC Endpoint:** `https://studio.genlayer.com/api`
 * **Pinned GenVM Runner:** `py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6`
+* **Production Web App:** [https://proofhirex.vercel.app](https://proofhirex.vercel.app)
 * **Contract Address:** [`0x24cA909D9fa2a680F4a8004A5EB15e78a20e4d64`](https://genlayer-explorer.vercel.app/address/0x24cA909D9fa2a680F4a8004A5EB15e78a20e4d64)
 * **Deployment Tx:** [`0x4778f0408dc876fa52198157de90c94721f075498f299945c590e1a5bf85e66d`](https://genlayer-explorer.vercel.app/transactions/0x4778f0408dc876fa52198157de90c94721f075498f299945c590e1a5bf85e66d)
 * **Consensus Status:** `ACCEPTED` / `MAJORITY_AGREE`
