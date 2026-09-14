@@ -1,18 +1,56 @@
+# Python & Virtualenv
 __pycache__/
 *.py[cod]
-.env
+*$py.class
+*.so
+.Python
+/env/
+/build/
+develop-eggs/
+/dist/
+downloads/
+eggs/
+.eggs/
+/lib/
+/lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 .venv
-env/
 venv/
+ENV/
+.pytest_cache/
+
+# Node & Next.js
 node_modules/
-npm-debug.log*
+.next/
+/out/
+.vercel
+
+# Environment variables & secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.secret
+*private_key*
+
+# OS Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE & Editor
 .vscode/
 .idea/
 *.swp
-.DS_Store
-Thumbs.db
-/dist
-/out
-.env.local
-.genvm/
-*.genvm-cache
+*.swo
+
+# Task logs & artifacts
+task-*.log
+.system_generated/
