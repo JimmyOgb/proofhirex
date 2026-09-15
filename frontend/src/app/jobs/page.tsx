@@ -3,10 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useProofHire } from '@/hooks/useProofHire';
-import { Job, JobStatus } from '@/lib/types';
+import { Job } from '@/lib/types';
 import { formatGen, truncateAddress } from '@/lib/utils';
 import { JobStatusBadge } from '@/components/StatusBadge';
-import { Search, Filter, RefreshCw, PlusCircle, ArrowRight, Layers } from 'lucide-react';
+import { Search, RefreshCw, PlusCircle, ArrowRight, Layers } from 'lucide-react';
 
 export default function JobsPage() {
   const { getAllJobs } = useProofHire();
@@ -137,13 +137,13 @@ export default function JobsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredJobs.map((job) => (
             <Link
-              key={job.job_id}
-              href={`/jobs/${job.job_id}`}
+              key={job.id}
+              href={`/jobs/${job.id}`}
               className="p-6 rounded-2xl bg-slate-900/40 border border-slate-800 hover:border-emerald-500/40 hover:bg-slate-900/70 transition group flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-mono text-slate-500">Job #{job.job_id}</span>
+                  <span className="text-xs font-mono text-slate-500">Job #{job.id}</span>
                   <JobStatusBadge status={job.status} />
                 </div>
 
@@ -166,7 +166,7 @@ export default function JobsPage() {
                   </div>
                   <div className="flex items-center space-x-1 text-slate-400 font-mono">
                     <Layers className="w-3 h-3 text-slate-500" />
-                    <span>{job.milestone_count} Milestones</span>
+                    <span>3 Milestones</span>
                   </div>
                 </div>
 

@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useProofHire } from '@/hooks/useProofHire';
 import { useWallet } from '@/context/WalletContext';
-import { Job, FreelancerReputation } from '@/lib/types';
+import { Job, UserReputation } from '@/lib/types';
 import { formatGen, truncateAddress } from '@/lib/utils';
 import { JobStatusBadge } from '@/components/StatusBadge';
 import { TxModal } from '@/components/TxModal';
@@ -25,15 +25,18 @@ export default function DashboardPage() {
   const { account, isConnected, connectWallet } = useWallet();
   const {
     getWithdrawableBalance,
-    getFreelancerReputation,
+    getReputation,
     getAllJobs,
     withdraw,
+    txPrompt,
     txFeedback,
+    confirmPendingTx,
+    cancelPendingTx,
     clearTxFeedback,
   } = useProofHire();
 
   const [balance, setBalance] = useState<string>('0');
-  const [reputation, setReputation] = useState<FreelancerReputation | null>(null);
+  const [reputation, setReputation] = useState<UserReputation | null>(null);
   const [clientJobs, setClientJobs] = useState<Job[]>([]);
   const [freelancerJobs, setFreelancerJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,7 +51,7 @@ export default function DashboardPage() {
       setRefreshing(true);
       const [bal, rep, allJobs] = await Promise.all([
         getWithdrawableBalance(account).catch(() => '0'),
-        getFreelancerReputation(account).catch(() => null),
+        getReputation(account).catch(() => null),
         getAllJobs().catch(() => []),
       ]);
 
@@ -96,7 +99,7 @@ export default function DashboardPage() {
           Connect Your Web3 Wallet
         </h1>
         <p className="text-sm text-slate-400 max-w-md mx-auto mb-8 leading-relaxed">
-          Access your withdrawable balances, reputation records, active milestones, and client/freelancer escrows.
+          Access your withdrawable native GEN balances, reputation records, active milestones, and client/freelancer escrows.
         </p>
         <button
           onClick={connectWallet}
@@ -110,7 +113,13 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <TxModal feedback={txFeedback} onClose={clearTxFeedback} />
+      <TxModal
+        prompt={txPrompt}
+        feedback={txFeedback}
+        onConfirmPrompt={confirmPendingTx}
+        onCancelPrompt={cancelPendingTx}
+        onCloseFeedback={clearTxFeedback}
+      />
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
@@ -167,7 +176,7 @@ export default function DashboardPage() {
               {formatGen(balance)}
             </div>
             <p className="text-xs text-slate-500 leading-relaxed">
-              Funds are isolated in the contract until you pull them, preventing reentrancy vulnerabilities.
+              Funds are safely stored on-chain until you initiate withdrawal. The contract zeros your balance before emitting transfer, preventing reentrancy attacks.
             </p>
           </div>
 
@@ -192,25 +201,31 @@ export default function DashboardPage() {
               </span>
             </div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">
-              Freelancer Protocol Reputation
+              On-Chain Protocol Reputation
             </h3>
 
             {reputation ? (
-              <div className="grid grid-cols-3 gap-3 mt-4">
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-center">
-                  <div className="text-lg font-bold font-mono text-white">
-                    {reputation.completed_milestones}
+              <div className="grid grid-cols-4 gap-2 mt-4">
+                <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800 text-center">
+                  <div className="text-base font-bold font-mono text-white">
+                    {reputation.jobs_completed}
                   </div>
-                  <div className="text-[10px] text-slate-500">Completed</div>
+                  <div className="text-[10px] text-slate-500">Jobs Done</div>
                 </div>
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-center">
-                  <div className="text-lg font-bold font-mono text-emerald-400">
+                <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800 text-center">
+                  <div className="text-base font-bold font-mono text-emerald-400">
+                    {reputation.milestones_delivered}
+                  </div>
+                  <div className="text-[10px] text-slate-500">Milestones</div>
+                </div>
+                <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800 text-center">
+                  <div className="text-base font-bold font-mono text-teal-400">
                     {reputation.disputes_won}
                   </div>
                   <div className="text-[10px] text-slate-500">Disputes Won</div>
                 </div>
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-center">
-                  <div className="text-lg font-bold font-mono text-rose-400">
+                <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800 text-center">
+                  <div className="text-base font-bold font-mono text-rose-400">
                     {reputation.disputes_lost}
                   </div>
                   <div className="text-[10px] text-slate-500">Disputes Lost</div>
@@ -230,42 +245,42 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Tabs: Jobs as Client / Jobs as Freelancer */}
+      {/* Tabs / Sections */}
       <div className="space-y-10">
-        {/* Section: Jobs As Client */}
+        {/* As Client */}
         <div>
           <div className="flex items-center space-x-2 mb-4">
-            <Briefcase className="w-5 h-5 text-emerald-400" />
-            <h2 className="text-xl font-bold text-white tracking-tight">
-              Jobs Posted as Client ({clientJobs.length})
+            <Briefcase className="w-4 h-4 text-emerald-400" />
+            <h2 className="text-lg font-bold text-white tracking-tight">
+              Jobs You Created ({clientJobs.length})
             </h2>
           </div>
 
-          {clientJobs.length === 0 ? (
+          {loading ? (
+            <div className="p-8 text-center text-slate-500 text-xs">Loading client escrows...</div>
+          ) : clientJobs.length === 0 ? (
             <div className="p-8 text-center rounded-2xl bg-slate-900/30 border border-slate-800 text-slate-500 text-xs">
               You haven&apos;t posted any jobs yet.
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {clientJobs.map((job) => (
+              {clientJobs.map((j) => (
                 <Link
-                  key={job.job_id}
-                  href={`/jobs/${job.job_id}`}
-                  className="p-5 rounded-2xl bg-slate-900/40 border border-slate-800 hover:border-emerald-500/40 transition group flex flex-col justify-between"
+                  key={j.id}
+                  href={`/jobs/${j.id}`}
+                  className="p-5 rounded-2xl bg-slate-900/40 border border-slate-800 hover:border-slate-700 transition block group"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-mono text-slate-500">Job #{job.job_id}</span>
-                    <JobStatusBadge status={job.status} />
+                    <span className="font-mono text-xs font-bold text-slate-500">#{j.id}</span>
+                    <JobStatusBadge status={j.status} />
                   </div>
-                  <h4 className="text-base font-bold text-white group-hover:text-emerald-300 transition mb-2">
-                    {job.title}
-                  </h4>
-                  <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs">
-                    <span className="font-mono text-emerald-400 font-bold">
-                      {formatGen(job.total_escrow)}
-                    </span>
-                    <span className="text-slate-500 font-mono">
-                      {job.milestone_count} Milestones
+                  <h3 className="font-bold text-sm text-slate-200 group-hover:text-emerald-400 transition mb-2">
+                    {j.title}
+                  </h3>
+                  <div className="flex items-center justify-between pt-3 border-t border-slate-800 text-xs">
+                    <span className="text-slate-500">Remaining Escrow</span>
+                    <span className="font-bold font-mono text-emerald-400">
+                      {formatGen(j.remaining_escrow)}
                     </span>
                   </div>
                 </Link>
@@ -274,40 +289,40 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Section: Jobs As Freelancer */}
+        {/* As Freelancer */}
         <div>
           <div className="flex items-center space-x-2 mb-4">
-            <Layers className="w-5 h-5 text-teal-400" />
-            <h2 className="text-xl font-bold text-white tracking-tight">
-              Jobs Assigned as Freelancer ({freelancerJobs.length})
+            <Layers className="w-4 h-4 text-teal-400" />
+            <h2 className="text-lg font-bold text-white tracking-tight">
+              Jobs Assigned to You ({freelancerJobs.length})
             </h2>
           </div>
 
-          {freelancerJobs.length === 0 ? (
+          {loading ? (
+            <div className="p-8 text-center text-slate-500 text-xs">Loading freelancer contracts...</div>
+          ) : freelancerJobs.length === 0 ? (
             <div className="p-8 text-center rounded-2xl bg-slate-900/30 border border-slate-800 text-slate-500 text-xs">
-              You are not currently assigned to any jobs.
+              You have not been assigned to any jobs yet.
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {freelancerJobs.map((job) => (
+              {freelancerJobs.map((j) => (
                 <Link
-                  key={job.job_id}
-                  href={`/jobs/${job.job_id}`}
-                  className="p-5 rounded-2xl bg-slate-900/40 border border-slate-800 hover:border-teal-500/40 transition group flex flex-col justify-between"
+                  key={j.id}
+                  href={`/jobs/${j.id}`}
+                  className="p-5 rounded-2xl bg-slate-900/40 border border-slate-800 hover:border-slate-700 transition block group"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-mono text-slate-500">Job #{job.job_id}</span>
-                    <JobStatusBadge status={job.status} />
+                    <span className="font-mono text-xs font-bold text-slate-500">#{j.id}</span>
+                    <JobStatusBadge status={j.status} />
                   </div>
-                  <h4 className="text-base font-bold text-white group-hover:text-teal-300 transition mb-2">
-                    {job.title}
-                  </h4>
-                  <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs">
-                    <span className="font-mono text-emerald-400 font-bold">
-                      {formatGen(job.total_escrow)}
-                    </span>
-                    <span className="text-slate-500 font-mono">
-                      {job.milestone_count} Milestones
+                  <h3 className="font-bold text-sm text-slate-200 group-hover:text-emerald-400 transition mb-2">
+                    {j.title}
+                  </h3>
+                  <div className="flex items-center justify-between pt-3 border-t border-slate-800 text-xs">
+                    <span className="text-slate-500">Total Escrow</span>
+                    <span className="font-bold font-mono text-emerald-400">
+                      {formatGen(j.total_escrow)}
                     </span>
                   </div>
                 </Link>

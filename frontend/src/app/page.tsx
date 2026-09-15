@@ -260,13 +260,13 @@ export default function HomePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {recentJobs.map((job) => (
                 <Link
-                  key={job.job_id}
-                  href={`/jobs/${job.job_id}`}
+                  key={job.id}
+                  href={`/jobs/${job.id}`}
                   className="p-6 rounded-2xl bg-slate-900/50 border border-slate-800 hover:border-emerald-500/50 hover:bg-slate-900/80 transition group flex flex-col justify-between"
                 >
                   <div>
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs font-mono text-slate-500">Job #{job.job_id}</span>
+                      <span className="text-xs font-mono text-slate-500">Job #{job.id}</span>
                       <JobStatusBadge status={job.status} />
                     </div>
                     <h4 className="text-lg font-bold text-white group-hover:text-emerald-300 transition mb-2">
@@ -285,7 +285,7 @@ export default function HomePage() {
                       </span>
                     </div>
                     <div className="text-slate-400 font-mono">
-                      {job.milestone_count} Milestones
+                      3 Milestones
                     </div>
                   </div>
                 </Link>

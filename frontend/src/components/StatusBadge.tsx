@@ -3,9 +3,10 @@
 import React from 'react';
 import { JobStatus, MilestoneStatus, DELIVERABLE_STATUS_LABELS } from '@/lib/types';
 
-export const JobStatusBadge: React.FC<{ status: JobStatus }> = ({ status }) => {
-  const styles: Record<JobStatus, string> = {
+export const JobStatusBadge: React.FC<{ status: JobStatus | string }> = ({ status }) => {
+  const styles: Record<string, string> = {
     OPEN: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
+    ASSIGNED: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30',
     IN_PROGRESS: 'bg-blue-500/10 text-blue-400 border-blue-500/30',
     COMPLETED: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30',
     DISPUTED: 'bg-rose-500/10 text-rose-400 border-rose-500/30',
@@ -24,13 +25,14 @@ export const JobStatusBadge: React.FC<{ status: JobStatus }> = ({ status }) => {
   );
 };
 
-export const MilestoneStatusBadge: React.FC<{ status: MilestoneStatus }> = ({ status }) => {
-  const styles: Record<MilestoneStatus, string> = {
+export const MilestoneStatusBadge: React.FC<{ status: MilestoneStatus | string }> = ({ status }) => {
+  const styles: Record<string, string> = {
     PENDING: 'bg-slate-800 text-slate-400 border-slate-700',
     SUBMITTED: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
-    APPROVED: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
-    DISPUTED: 'bg-rose-500/10 text-rose-400 border-rose-500/30',
-    RESOLVED: 'bg-purple-500/10 text-purple-400 border-purple-500/30',
+    VERIFIED: 'bg-teal-500/10 text-teal-400 border-teal-500/30',
+    REJECTED: 'bg-rose-500/10 text-rose-400 border-rose-500/30',
+    DISPUTED: 'bg-purple-500/10 text-purple-400 border-purple-500/30',
+    RELEASED: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
   };
 
   return (

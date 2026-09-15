@@ -1,21 +1,32 @@
 {
   "name": "proofhirex",
   "version": "1.0.0",
-  "description": "GenLayer Intelligent Contract powering a trustless freelance marketplace — AI consensus generates milestones, validates work, adjudicates disputes, and manages reputation on-chain.",
+  "description": "ProofHireX — Autonomous Web3 escrow & AI milestone verification powered by GenLayer Intelligent Contracts on StudioNet.",
   "keywords": [
-    "genlayer", "freelance", "marketplace", "blockchain", "ai",
-    "consensus", "web3", "escrow", "reputation", "dispute-resolution"
+    "genlayer",
+    "freelance",
+    "marketplace",
+    "blockchain",
+    "ai",
+    "consensus",
+    "web3",
+    "escrow",
+    "reputation",
+    "dispute-resolution"
   ],
-  "homepage": "https://studio.genlayer.com/?import-contract=0x9A79f3e670C91a797E52369c65878215CB7Bde24",
+  "homepage": "https://proofhirex.vercel.app/",
   "repository": {
     "type": "git",
     "url": "https://github.com/JimmyOgb/proofhirex"
   },
   "license": "MIT",
   "scripts": {
-    "dev": "npx serve frontend/",
-    "start": "npx serve frontend/",
-    "deploy:netlify": "netlify deploy --prod --dir frontend/",
-    "deploy:vercel": "vercel --prod"
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "start": "npm --prefix frontend run start",
+    "lint:frontend": "npm --prefix frontend run lint",
+    "typecheck": "npm --prefix frontend exec tsc --noEmit",
+    "test:contracts": "pytest -v",
+    "verify:studionet": "python scripts/verify_studionet.py"
   }
 }

@@ -45,7 +45,10 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
     approveMilestoneManual,
     raiseDispute,
     arbitrateDispute,
+    txPrompt,
     txFeedback,
+    confirmPendingTx,
+    cancelPendingTx,
     clearTxFeedback,
   } = useProofHire();
 
@@ -67,18 +70,15 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
     if (isNaN(jobId)) return;
     try {
       setRefreshing(true);
-      const jobData = await getJob(jobId);
+      const [jobData, ms, apps] = await Promise.all([
+        getJob(jobId).catch(() => null),
+        getJobMilestones(jobId).catch(() => []),
+        getJobApplicants(jobId).catch(() => []),
+      ]);
+
       setJob(jobData);
-
-      if (jobData && jobData.milestone_count) {
-        const ms = await getJobMilestones(jobId, jobData.milestone_count);
-        setMilestones(ms);
-      }
-
-      if (jobData && jobData.status === 'OPEN') {
-        const apps = await getJobApplicants(jobId);
-        setApplicants(apps);
-      }
+      setMilestones(ms);
+      setApplicants(apps);
     } catch (err) {
       console.error('Failed fetching job detail:', err);
     } finally {
@@ -169,9 +169,9 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
     }
   };
 
-  const handleArbitrate = async (mId: number) => {
+  const handleArbitrate = async () => {
     try {
-      await arbitrateDispute(jobId, mId);
+      await arbitrateDispute(jobId);
       await loadJobData();
     } catch (err) {
       console.error(err);
@@ -191,7 +191,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
       <div className="max-w-5xl mx-auto px-4 py-24 text-center">
         <h2 className="text-xl font-bold text-white mb-2">Job #{jobId} Not Found</h2>
         <p className="text-xs text-slate-400 mb-6">
-          This job may not exist on StudioNet or the transaction is not finalized yet.
+          This job may not exist on StudioNet or the transaction has not finalized yet.
         </p>
         <Link
           href="/jobs"
@@ -205,9 +205,15 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <TxModal feedback={txFeedback} onClose={clearTxFeedback} />
+      <TxModal
+        prompt={txPrompt}
+        feedback={txFeedback}
+        onConfirmPrompt={confirmPendingTx}
+        onCancelPrompt={cancelPendingTx}
+        onCloseFeedback={clearTxFeedback}
+      />
 
-      {/* Back link & Refresh */}
+      {/* Back link */}
       <div className="flex items-center justify-between mb-6">
         <Link
           href="/jobs"
@@ -216,22 +222,23 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
           <ArrowLeft className="w-3.5 h-3.5 mr-1" />
           Back to Jobs
         </Link>
+
         <button
           onClick={loadJobData}
           disabled={refreshing}
-          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition"
+          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-300 hover:text-white transition"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-emerald-400' : ''}`} />
-          <span>Refresh State</span>
+          <span>Refresh Data</span>
         </button>
       </div>
 
       {/* Main Job Overview Card */}
-      <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-6 sm:p-8 backdrop-blur-xl shadow-2xl mb-8">
+      <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
           <div>
-            <div className="flex items-center space-x-2 mb-2">
-              <span className="text-xs font-mono text-slate-500">Job #{job.job_id}</span>
+            <div className="flex items-center space-x-3 mb-2">
+              <span className="font-mono text-xs font-bold text-slate-500">#{job.id}</span>
               <JobStatusBadge status={job.status} />
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
@@ -239,14 +246,15 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
             </h1>
           </div>
 
-          <div className="text-left sm:text-right">
-            <span className="text-xs text-slate-500 block">Total Escrow</span>
-            <span className="text-2xl font-bold font-mono text-emerald-400">
+          <div className="sm:text-right">
+            <span className="text-xs text-slate-500 block font-medium">Total Escrow Value</span>
+            <span className="text-2xl sm:text-3xl font-mono font-black text-emerald-400">
               {formatGen(job.total_escrow)}
             </span>
           </div>
         </div>
 
+        {/* Requirements */}
         <p className="mt-6 text-sm text-slate-300 leading-relaxed whitespace-pre-line">
           {job.description}
         </p>
@@ -318,133 +326,142 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
         </div>
 
         <div className="space-y-6">
-          {milestones.map((m, idx) => (
-            <div
-              key={idx}
-              className="p-6 rounded-2xl bg-slate-900/40 border border-slate-800 hover:border-slate-700 transition space-y-4"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-800">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center font-mono font-bold text-xs text-white">
-                    #{idx + 1}
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-white">
-                      Milestone {idx + 1} ({m.percentage}%)
-                    </h3>
-                    <span className="text-xs font-mono text-emerald-400">
-                      {formatGen(m.amount)}
-                    </span>
-                  </div>
-                </div>
+          {milestones.map((m, idx) => {
+            const isCurrentActive = Number(job.current_milestone) === idx && job.status === 'IN_PROGRESS';
 
-                <div className="flex items-center space-x-2">
-                  <MilestoneStatusBadge status={m.status} />
-                </div>
-              </div>
-
-              {/* Description */}
-              <p className="text-xs text-slate-300 leading-relaxed">{m.description}</p>
-
-              {/* Deliverable Evidence Details */}
-              {m.evidence_url && (
-                <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800/80 space-y-2 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-500 font-semibold">Submitted Evidence:</span>
-                    <a
-                      href={m.evidence_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-emerald-400 hover:text-emerald-300 flex items-center space-x-1 font-mono"
-                    >
-                      <span className="truncate max-w-xs">{m.evidence_url}</span>
-                      <ExternalLink className="w-3 h-3 ml-0.5 flex-shrink-0" />
-                    </a>
-                  </div>
-
-                  {m.submission_notes && (
-                    <div className="text-slate-400 italic">
-                      Notes: &quot;{m.submission_notes}&quot;
+            return (
+              <div
+                key={idx}
+                className={`p-6 rounded-2xl bg-slate-900/40 border transition space-y-4 ${
+                  isCurrentActive ? 'border-emerald-500/50 shadow-lg shadow-emerald-500/5' : 'border-slate-800 hover:border-slate-700'
+                }`}
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-800">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center font-mono font-bold text-xs text-white">
+                      #{idx + 1}
                     </div>
-                  )}
+                    <div>
+                      <h3 className="text-base font-bold text-white">
+                        {m.title || `Milestone ${idx + 1}`} ({m.pct}%)
+                      </h3>
+                      <span className="text-xs font-mono text-emerald-400">
+                        {formatGen(m.amount)}
+                      </span>
+                    </div>
+                  </div>
 
-                  {/* AI Verification result */}
-                  <div className="pt-2 border-t border-slate-900 flex items-center justify-between">
-                    <DeliverableStatusBadge code={m.verification_status} />
-                    {m.verification_reason && (
-                      <span className="text-[11px] text-slate-400 max-w-sm text-right">
-                        {m.verification_reason}
+                  <div className="flex items-center space-x-2">
+                    {isCurrentActive && (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950 border border-emerald-800 text-emerald-400">
+                        ACTIVE
                       </span>
                     )}
+                    <MilestoneStatusBadge status={m.status} />
                   </div>
                 </div>
-              )}
 
-              {/* Actions per Milestone */}
-              <div className="pt-3 flex flex-wrap items-center gap-3">
-                {/* Freelancer submit button */}
-                {isFreelancer && m.status === 'PENDING' && (
-                  <button
-                    onClick={() => {
-                      setSelectedMilestone(idx);
-                      setActiveModal('submit');
-                    }}
-                    className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition flex items-center space-x-1.5"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    <span>Submit Deliverable</span>
-                  </button>
+                {/* Description */}
+                <p className="text-xs text-slate-300 leading-relaxed">{m.description}</p>
+
+                {/* Deliverable Evidence Details */}
+                {m.evidence_url && (
+                  <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800/80 space-y-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500 font-semibold">Submitted Evidence:</span>
+                      <a
+                        href={m.evidence_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-emerald-400 hover:text-emerald-300 flex items-center space-x-1 font-mono"
+                      >
+                        <span className="truncate max-w-xs">{m.evidence_url}</span>
+                        <ExternalLink className="w-3 h-3 ml-0.5 flex-shrink-0" />
+                      </a>
+                    </div>
+
+                    {m.notes && (
+                      <div className="text-slate-400 italic">
+                        Notes: &quot;{m.notes}&quot;
+                      </div>
+                    )}
+
+                    {/* AI Verification result */}
+                    <div className="pt-2 border-t border-slate-900 flex items-center justify-between">
+                      <DeliverableStatusBadge code={m.verification_code} />
+                      <span className="text-[11px] text-slate-400">
+                        Risk Code: {m.verification_risk === 0 ? 'LOW' : m.verification_risk === 1 ? 'MEDIUM' : 'HIGH'}
+                      </span>
+                    </div>
+                  </div>
                 )}
 
-                {/* AI Consensus Verification trigger */}
-                {m.status === 'SUBMITTED' && (
-                  <button
-                    onClick={() => handleVerifyAI(idx)}
-                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-bold text-xs shadow-lg shadow-teal-500/20 transition flex items-center space-x-1.5"
-                  >
-                    <Cpu className="w-3.5 h-3.5" />
-                    <span>Trigger GenLayer AI Consensus</span>
-                  </button>
-                )}
+                {/* Actions per Milestone */}
+                <div className="pt-3 flex flex-wrap items-center gap-3">
+                  {/* Freelancer submit button */}
+                  {isFreelancer && isCurrentActive && (m.status === 'PENDING' || m.status === 'REJECTED') && (
+                    <button
+                      onClick={() => {
+                        setSelectedMilestone(idx);
+                        setActiveModal('submit');
+                      }}
+                      className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition flex items-center space-x-1.5"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Submit Deliverable Evidence</span>
+                    </button>
+                  )}
 
-                {/* Client Manual Approval */}
-                {isClient && (m.status === 'SUBMITTED' || m.verification_status === 0) && m.status !== 'APPROVED' && m.status !== 'RESOLVED' && (
-                  <button
-                    onClick={() => handleApprove(idx)}
-                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/20 transition flex items-center space-x-1.5"
-                  >
-                    <CheckCircle className="w-3.5 h-3.5" />
-                    <span>Approve & Release Funds</span>
-                  </button>
-                )}
+                  {/* AI Consensus Verification trigger */}
+                  {m.status === 'SUBMITTED' && (
+                    <button
+                      onClick={() => handleVerifyAI(idx)}
+                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-bold text-xs shadow-lg shadow-teal-500/20 transition flex items-center space-x-1.5"
+                    >
+                      <Cpu className="w-3.5 h-3.5" />
+                      <span>Trigger GenLayer AI Consensus</span>
+                    </button>
+                  )}
 
-                {/* Dispute Trigger */}
-                {(isClient || isFreelancer) && (m.status === 'SUBMITTED' || m.status === 'PENDING') && (
-                  <button
-                    onClick={() => {
-                      setSelectedMilestone(idx);
-                      setActiveModal('dispute');
-                    }}
-                    className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-rose-950/60 hover:text-rose-400 text-slate-400 border border-slate-700 text-xs font-semibold transition flex items-center space-x-1.5"
-                  >
-                    <AlertTriangle className="w-3.5 h-3.5" />
-                    <span>Raise Dispute</span>
-                  </button>
-                )}
+                  {/* Client Manual Approval */}
+                  {isClient && isCurrentActive && (m.status === 'SUBMITTED' || m.status === 'VERIFIED') && (
+                    <button
+                      onClick={() => handleApprove(idx)}
+                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/20 transition flex items-center space-x-1.5"
+                    >
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      <span>Approve & Release Funds</span>
+                    </button>
+                  )}
 
-                {/* Dispute Arbitration Trigger */}
-                {m.status === 'DISPUTED' && (
-                  <button
-                    onClick={() => handleArbitrate(idx)}
-                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-purple-600/20 transition flex items-center space-x-1.5"
-                  >
-                    <Scale className="w-3.5 h-3.5" />
-                    <span>Trigger AI Intelligent Arbitration</span>
-                  </button>
-                )}
+                  {/* Dispute Trigger */}
+                  {(isClient || isFreelancer) && isCurrentActive && (m.status === 'SUBMITTED' || m.status === 'PENDING' || m.status === 'REJECTED') && (
+                    <button
+                      onClick={() => {
+                        setSelectedMilestone(idx);
+                        setActiveModal('dispute');
+                      }}
+                      className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-rose-950/60 hover:text-rose-400 text-slate-400 border border-slate-700 text-xs font-semibold transition flex items-center space-x-1.5"
+                    >
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      <span>Raise Dispute</span>
+                    </button>
+                  )}
+
+                  {/* Dispute Arbitration Trigger */}
+                  {job.status === 'DISPUTED' && isCurrentActive && (
+                    <button
+                      onClick={handleArbitrate}
+                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-purple-600/20 transition flex items-center space-x-1.5"
+                    >
+                      <Scale className="w-3.5 h-3.5" />
+                      <span>Trigger AI Intelligent Arbitration</span>
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -460,12 +477,12 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
             </div>
           </div>
 
-          {/* Apply Form if not Client and not applied */}
+          {/* Apply Form if not Client */}
           {!isClient && (
             <div className="mb-8 p-6 rounded-2xl bg-slate-900/60 border border-slate-800">
               <h3 className="text-sm font-bold text-white mb-2">Apply for this Job</h3>
               <p className="text-xs text-slate-400 mb-4">
-                Submit your cover letter and proof of technical capability.
+                Submit your proposal and technical deliverables description.
               </p>
               {!isConnected ? (
                 <button
@@ -481,14 +498,14 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                     rows={3}
                     value={coverLetter}
                     onChange={(e) => setCoverLetter(e.target.value)}
-                    placeholder="Describe your experience with GenLayer intelligent contracts and relevant deliverables..."
+                    placeholder="Describe your technical proposal, deliverables approach, and relevant experience..."
                     className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500/60 transition resize-none"
                   />
                   <button
                     type="submit"
                     className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition"
                   >
-                    Submit Application
+                    Submit On-Chain Application
                   </button>
                 </form>
               )}
@@ -510,10 +527,10 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                   <div>
                     <div className="flex items-center space-x-2 mb-1">
                       <span className="font-mono font-bold text-xs text-slate-200">
-                        {truncateAddress(app.applicant_address, 4)}
+                        {truncateAddress(app.applicant, 4)}
                       </span>
                       <a
-                        href={`${EXPLORER_URL}/address/${app.applicant_address}`}
+                        href={`${EXPLORER_URL}/address/${app.applicant}`}
                         target="_blank"
                         rel="noreferrer"
                         className="text-emerald-400 hover:text-emerald-300"
@@ -522,13 +539,13 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                       </a>
                     </div>
                     <p className="text-xs text-slate-400 max-w-xl leading-relaxed">
-                      {app.cover_letter}
+                      {app.proposal}
                     </p>
                   </div>
 
                   {isClient && (
                     <button
-                      onClick={() => handleHire(app.applicant_address)}
+                      onClick={() => handleHire(app.applicant)}
                       className="self-start sm:self-auto px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition whitespace-nowrap"
                     >
                       Hire Candidate
@@ -549,7 +566,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
               Submit Deliverable for Milestone #{selectedMilestone + 1}
             </h3>
             <p className="text-xs text-slate-400 mb-6">
-              Provide a publicly reachable HTTP URL containing the deliverable artifact (e.g. GitHub repository, raw markdown, or API endpoint).
+              Provide a publicly reachable HTTP/HTTPS URL containing deliverable evidence (e.g. GitHub repository, raw markdown, or API endpoint).
             </p>
 
             <form onSubmit={handleSubmitDeliverable} className="space-y-4">
@@ -592,7 +609,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                   type="submit"
                   className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20"
                 >
-                  Submit On-Chain
+                  Submit Deliverable
                 </button>
               </div>
             </form>

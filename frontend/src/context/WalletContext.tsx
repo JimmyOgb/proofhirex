@@ -1,15 +1,17 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { switchToStudioNet } from '@/lib/genlayer';
+import { switchToStudioNet, CHAIN_ID_HEX } from '@/lib/genlayer';
 
 interface WalletContextType {
   account: string | null;
   chainId: string | null;
   isConnected: boolean;
   isConnecting: boolean;
+  isCorrectNetwork: boolean;
   connectWallet: () => Promise<void>;
   disconnectWallet: () => void;
+  switchNetwork: () => Promise<void>;
   error: string | null;
 }
 
@@ -18,8 +20,10 @@ const WalletContext = createContext<WalletContextType>({
   chainId: null,
   isConnected: false,
   isConnecting: false,
+  isCorrectNetwork: false,
   connectWallet: async () => {},
   disconnectWallet: () => {},
+  switchNetwork: async () => {},
   error: null,
 });
 
@@ -29,6 +33,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Passive check on mount: does not prompt user or request accounts
   const checkConnection = useCallback(async () => {
     if (typeof window === 'undefined' || !(window as any).ethereum) return;
     try {
@@ -40,7 +45,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const currentChain = await ethereum.request({ method: 'eth_chainId' });
       setChainId(currentChain);
     } catch (err: any) {
-      console.warn('Auto connect check failed:', err);
+      console.warn('Passive connection check failed:', err);
     }
   }, []);
 
@@ -70,6 +75,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   }, [checkConnection]);
 
+  // Explicit user action: only requests connection when user clicks "Connect Wallet"
   const connectWallet = async () => {
     if (typeof window === 'undefined' || !(window as any).ethereum) {
       setError('Please install MetaMask or a compatible Web3 wallet.');
@@ -82,10 +88,17 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
       if (accounts && accounts.length > 0) {
         setAccount(accounts[0]);
-        try {
-          await switchToStudioNet(accounts[0]);
-        } catch (switchErr: any) {
-          console.warn('Network switch note:', switchErr);
+        const currentChain = await ethereum.request({ method: 'eth_chainId' });
+        setChainId(currentChain);
+        // Prompt network switch if not on StudioNet
+        if (currentChain !== CHAIN_ID_HEX) {
+          try {
+            await switchToStudioNet();
+            const updatedChain = await ethereum.request({ method: 'eth_chainId' });
+            setChainId(updatedChain);
+          } catch (switchErr: any) {
+            console.warn('Network switch declined or failed:', switchErr);
+          }
         }
       }
     } catch (err: any) {
@@ -95,9 +108,23 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
+  const switchNetwork = async () => {
+    try {
+      await switchToStudioNet();
+      if (typeof window !== 'undefined' && (window as any).ethereum) {
+        const updatedChain = await (window as any).ethereum.request({ method: 'eth_chainId' });
+        setChainId(updatedChain);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to switch network');
+    }
+  };
+
   const disconnectWallet = () => {
     setAccount(null);
   };
+
+  const isCorrectNetwork = (chainId?.toLowerCase() === CHAIN_ID_HEX.toLowerCase());
 
   return (
     <WalletContext.Provider
@@ -106,8 +133,10 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         chainId,
         isConnected: !!account,
         isConnecting,
+        isCorrectNetwork,
         connectWallet,
         disconnectWallet,
+        switchNetwork,
         error,
       }}
     >
