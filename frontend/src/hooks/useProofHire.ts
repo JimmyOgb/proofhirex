@@ -26,6 +26,7 @@ export function useProofHire() {
 
   const [txPrompt, setTxPrompt] = useState<TxPrompt | null>(null);
   const pendingActionRef = useRef<(() => Promise<any>) | null>(null);
+  const pendingRejectRef = useRef<((reason?: any) => void) | null>(null);
 
   const [txFeedback, setTxFeedback] = useState<TxFeedback>({
     active: false,
@@ -41,12 +42,17 @@ export function useProofHire() {
   const cancelPendingTx = useCallback(() => {
     setTxPrompt(null);
     pendingActionRef.current = null;
+    if (pendingRejectRef.current) {
+      pendingRejectRef.current(new Error('USER_CANCELLED'));
+      pendingRejectRef.current = null;
+    }
   }, []);
 
   const confirmPendingTx = useCallback(async () => {
     const action = pendingActionRef.current;
     setTxPrompt(null);
     pendingActionRef.current = null;
+    pendingRejectRef.current = null;
     if (action) {
       await action();
     }
@@ -229,7 +235,8 @@ export function useProofHire() {
    */
   const promptAndExecute = (
     promptDetails: Omit<TxPrompt, 'network' | 'chainId' | 'contractAddress'>,
-    executeFn: () => Promise<any>
+    executeFn: () => Promise<any>,
+    rejectFn?: (reason?: any) => void
   ) => {
     setTxPrompt({
       ...promptDetails,
@@ -238,6 +245,7 @@ export function useProofHire() {
       contractAddress: PROOFHIREX_CONTRACT_ADDRESS,
     });
     pendingActionRef.current = executeFn;
+    pendingRejectRef.current = rejectFn || null;
   };
 
   // 1. create_job (payable) - 11 contract arguments
@@ -300,7 +308,8 @@ export function useProofHire() {
           } catch (e) {
             reject(e);
           }
-        }
+        },
+        reject
       );
     });
   };
@@ -327,7 +336,8 @@ export function useProofHire() {
           } catch (e) {
             reject(e);
           }
-        }
+        },
+        reject
       );
     });
   };
@@ -354,7 +364,8 @@ export function useProofHire() {
           } catch (e) {
             reject(e);
           }
-        }
+        },
+        reject
       );
     });
   };
@@ -386,7 +397,8 @@ export function useProofHire() {
           } catch (e) {
             reject(e);
           }
-        }
+        },
+        reject
       );
     });
   };
@@ -413,7 +425,8 @@ export function useProofHire() {
           } catch (e) {
             reject(e);
           }
-        }
+        },
+        reject
       );
     });
   };
@@ -440,7 +453,8 @@ export function useProofHire() {
           } catch (e) {
             reject(e);
           }
-        }
+        },
+        reject
       );
     });
   };
@@ -467,7 +481,8 @@ export function useProofHire() {
           } catch (e) {
             reject(e);
           }
-        }
+        },
+        reject
       );
     });
   };
@@ -494,7 +509,8 @@ export function useProofHire() {
           } catch (e) {
             reject(e);
           }
-        }
+        },
+        reject
       );
     });
   };
@@ -521,7 +537,8 @@ export function useProofHire() {
           } catch (e) {
             reject(e);
           }
-        }
+        },
+        reject
       );
     });
   };
