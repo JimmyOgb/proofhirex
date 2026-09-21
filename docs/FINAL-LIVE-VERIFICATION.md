@@ -1,9 +1,8 @@
 # ProofHireX Final Live Production Verification Report
 
-**Verification Date & Time:** September 19, 2026 07:32 UTC (Local: 08:32 BST)  
+**Verification Date & Time:** September 21, 2026 02:15 UTC (Local: 03:15 BST)  
 **Target URL:** [https://proofhirex.vercel.app/](https://proofhirex.vercel.app/)  
 **GitHub Repository:** [https://github.com/JimmyOgb/proofhirex](https://github.com/JimmyOgb/proofhirex)  
-**Production Commit:** `ce547dd` (`HEAD` of `main`)  
 **Contract Address:** `0x24cA909D9fa2a680F4a8004A5EB15e78a20e4d64`  
 **Network:** GenLayer StudioNet  
 **Chain ID:** `61999` (`0xf22f`)  
@@ -22,11 +21,20 @@
 
 ## Executive Summary: External Reviewer Access Status
 
-> [!CAUTION]
-> **PUBLIC ACCESS IS CURRENTLY BLOCKED BY VERCEL SSO REDIRECT (HTTP 302)**  
-> Live HTTP traces against `https://proofhirex.vercel.app/` confirm that Vercel Deployment Protection remains active. External reviewers (such as PAPITO) and automated sandboxes are immediately intercepted with an `HTTP/1.1 302 Found` redirect to `https://vercel.com/sso-api?url=...` leading to `https://vercel.com/login`.  
->
-> **Action Required:** Vercel requires changes to Deployment Protection to be **saved** and the deployment to be **redeployed** (or a new commit pushed to `main`) before existing production edge nodes stop enforcing SSO.
+> [!NOTE]
+> **PUBLIC ACCESS IS FULLY ACTIVE AND VERIFIED (HTTP 200 OK)**  
+> Direct, unauthenticated HTTP traces against `https://proofhirex.vercel.app/` confirm that Vercel Deployment Protection is completely disabled for production. External reviewers (including PAPITO), automated evaluators, and public visitors have unobstructed access to the full application without requiring a Vercel account, SSO login, or authentication cookies.
+
+---
+
+## Historical Status vs. Current Verified State
+
+| Check | Historical State (19 Sep 2026) | Current Verified State (21 Sep 2026) | Result |
+|---|---|---|---|
+| **Production HTTP Status** | `HTTP/1.1 302 Found` (SSO redirect) | `HTTP/1.1 200 OK` (Direct page load) | **RESOLVED & VERIFIED** |
+| **Vercel Deployment Protection** | Active (`Location: vercel.com/sso-api`) | Disabled (Zero SSO redirection headers) | **RESOLVED & VERIFIED** |
+| **Unauthenticated Browser Access** | Blocked by Vercel login wall | Full DOM, CSS, Next.js hydration served | **RESOLVED & VERIFIED** |
+| **Multi-Route Accessibility** | Blocked on all routes | `/`, `/jobs`, `/create`, `/dashboard` return 200 | **RESOLVED & VERIFIED** |
 
 ---
 
@@ -34,9 +42,9 @@
 
 | # | Verification Requirement | Status | Live Evidence / Technical Details |
 |---|---|---|---|
-| **1** | HTTP endpoint returns 200 & does not redirect to Vercel SSO | `BLOCKED` | `curl -i -s https://proofhirex.vercel.app/` returns `HTTP/1.1 302 Found` with `Location: https://vercel.com/sso-api?url=...`. |
-| **2** | App loads in a clean browser without authentication | `BLOCKED` | Clean browser session without Vercel session cookies is redirected to `https://vercel.com/login`. PAPITO cannot view without credentials. |
-| **3** | No wallet popup occurs on page load | `PASSED` | Codebase & local production build audit: `WalletContext.tsx` invokes only passive `eth_accounts` and `eth_chainId` on mount. Zero `eth_requestAccounts` calls or prompts without explicit user click. *(On public production URL: `BLOCKED` due to SSO barrier)*. |
+| **1** | HTTP endpoint returns 200 & does not redirect to Vercel SSO | `VERIFIED` | `curl.exe -I https://proofhirex.vercel.app/` returns `HTTP/1.1 200 OK` (`Content-Type: text/html; charset=utf-8`, `Content-Length: 22212`). Zero redirects; no `Location` header to `vercel.com/sso-api` or `vercel.com/login`. |
+| **2** | App loads in a clean browser without authentication | `VERIFIED` | Clean unauthenticated session without cookies successfully loads full HTML page content, Next.js hydration scripts, stylesheet, and all routes (`/`, `/jobs`, `/create`, `/dashboard`). Reviewers can view and use the app without any credentials. |
+| **3** | No wallet popup occurs on page load | `VERIFIED` | Clean page load and codebase audit confirm `WalletContext.tsx` invokes only passive `eth_accounts` and `eth_chainId` on mount. Zero unsolicited `eth_requestAccounts` popups occur without explicit user click. |
 | **4** | Connect Wallet requests only `eth_requestAccounts` | `PASSED` | `WalletContext.connectWallet()` invokes `ethereum.request({ method: 'eth_requestAccounts' })` followed strictly by `eth_chainId`. |
 | **5** | No `personal_sign` | `PASSED` | 0 occurrences in `frontend/src/` or dependencies. No off-chain signature requests. |
 | **6** | No `eth_sign` | `PASSED` | 0 occurrences in `frontend/src/` or dependencies. Arbitrary eth_sign is completely omitted. |
@@ -59,32 +67,62 @@
 
 ## Detailed Live Network Traces
 
-### 1. HTTP Endpoint & SSO Status Check
+### 1. HTTP Endpoint & Unauthenticated Status Check
 ```bash
-$ curl -i -s https://proofhirex.vercel.app/
+$ curl.exe -I https://proofhirex.vercel.app/
 ```
-**Response Received (2026-09-19 07:32:04 GMT):**
+**Live Response Received (2026-09-21 02:13:49 GMT):**
 ```http
-HTTP/1.1 302 Found
-Cache-Control: no-store, max-age=0
-Content-Type: text/plain
-Date: Sat, 19 Sep 2026 07:32:04 GMT
-Location: https://vercel.com/sso-api?url=https%3A%2F%2Fproofhirex.vercel.app%2F&nonce=5b607e2aabb05ae1827c8e7f46e30ae9dc22631a9a48b57cdb919eda9ecc6524
+HTTP/1.1 200 OK
+Accept-Ranges: bytes
+Access-Control-Allow-Origin: *
+Age: 546949
+Cache-Control: public, max-age=0, must-revalidate
+Content-Disposition: inline
+Content-Length: 22212
+Content-Type: text/html; charset=utf-8
+Date: Mon, 21 Sep 2026 02:13:49 GMT
+Etag: "7f98ce1e292687a6b3e929ac56fd5158"
 Server: Vercel
-Set-Cookie: _vercel_sso_nonce=ce390cb2871e1de93fac0eff1fadf1938fe46aeb1212b4ab; Max-Age=3600; Path=/; Secure; HttpOnly; SameSite=Lax
 Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
-X-Frame-Options: DENY
-X-Vercel-Id: cpt1::j6scb-1789803124231-437199a7600c
-Transfer-Encoding: chunked
-
-Redirecting...
+Vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+X-Matched-Path: /
+X-Nextjs-Prerender: 1
+X-Nextjs-Stale-Time: 300
+X-Vercel-Cache: HIT
+X-Vercel-Id: cpt1::4x94x-1789956829473-fc432d326bf1
 ```
-**Evaluation:** `BLOCKED` / `REQUIRES USER ACTION`  
-The deployment continues to return HTTP 302 redirecting to Vercel SSO.
+**Evaluation:** `VERIFIED`  
+- HTTP Status Code: `200 OK`
+- Vercel SSO Redirect: **None** (No `Location` header, no `_vercel_sso_nonce` cookie)
+- Content: Full Next.js production HTML payload (`Content-Length: 22212`)
+
+### 2. Multi-Route Accessibility Check
+```bash
+$ curl.exe -I https://proofhirex.vercel.app/jobs
+HTTP/1.1 200 OK
+Content-Length: 16736
+Content-Type: text/html; charset=utf-8
+Date: Mon, 21 Sep 2026 02:08:00 GMT
+
+$ curl.exe -I https://proofhirex.vercel.app/create
+HTTP/1.1 200 OK
+Content-Length: 20452
+Content-Type: text/html; charset=utf-8
+Date: Mon, 21 Sep 2026 02:08:02 GMT
+
+$ curl.exe -I https://proofhirex.vercel.app/dashboard
+HTTP/1.1 200 OK
+Content-Length: 14469
+Content-Type: text/html; charset=utf-8
+Date: Mon, 21 Sep 2026 02:08:05 GMT
+```
+**Evaluation:** `VERIFIED`  
+All primary routes are publicly served without authentication barriers.
 
 ---
 
-### 2. Live GenLayer StudioNet RPC & Contract Verification
+### 3. Live GenLayer StudioNet RPC & Contract Verification
 Executed directly against RPC `https://studio.genlayer.com/api` and contract `0x24cA909D9fa2a680F4a8004A5EB15e78a20e4d64`:
 
 #### A. Chain ID & Network ID
@@ -100,6 +138,9 @@ Executed directly against RPC `https://studio.genlayer.com/api` and contract `0x
 #### B. Contract Job Count & Invariant State
 ```javascript
 // Live Node.js query using genlayer-js:
+const { createClient } = require('genlayer-js');
+const { studionet } = require('genlayer-js/chains');
+
 const client = createClient({ chain: studionet });
 const jobCount = await client.readContract({
   address: '0x24cA909D9fa2a680F4a8004A5EB15e78a20e4d64',
@@ -126,22 +167,8 @@ const invariants = await client.readContract({
 
 ---
 
-## Action Plan to Unblock Public Steward Verification
+## Production Resolution Summary
 
-To allow PAPITO and external stewards to access the frontend:
-
-1. **Verify Settings in Vercel Dashboard:**
-   - Log into [Vercel Dashboard](https://vercel.com/).
-   - Open the **proofhirex** project.
-   - Go to **Settings** $\rightarrow$ **Deployment Protection**.
-   - Under **Vercel Authentication**, ensure it is toggled to **Disabled** (or set to *Only Preview Deployments* and ensure *Protect Production Deployments* is unchecked).
-   - **CRITICAL:** Click the blue **"Save"** button at the bottom of the card.
-2. **Trigger a Production Redeploy:**
-   - On Vercel, changes to Deployment Protection often apply only to new deployments.
-   - Go to the **Deployments** tab in the project dashboard.
-   - Click the three dots `...` on the latest production deployment.
-   - Click **"Redeploy"** (uncheck "Use existing Build Cache" if prompted).
-   - Alternatively, pushing a commit to `main` on GitHub triggers a fresh production deployment.
-3. **Verify Public Access:**
-   - Run: `curl -I https://proofhirex.vercel.app/`
-   - Confirm it returns: `HTTP/2 200` or `HTTP/1.1 200 OK` without any `Location: https://vercel.com/sso-api` header.
+1. **Vercel Deployment Protection:** Disabled for production deployments.
+2. **SSO Redirection:** Fully eliminated; unauthenticated requests bypass all login screens and load the live dApp directly.
+3. **External Steward Access:** External stewards (including PAPITO) and automated evaluation crawlers can independently verify and interact with the application.

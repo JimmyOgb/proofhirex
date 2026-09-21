@@ -77,19 +77,15 @@ https://proofhirex.vercel.app/
 When the project was initially created on Vercel under project name `frontend` (`prj_XHjZlfVOgjIJpgfR7SJfTzhYbGkd`), Vercel generated the auto-assigned domain `frontend-iota-nine-65.vercel.app`.
 Once the custom domain `proofhirex.vercel.app` was added and aliased to the production branch, it became the official canonical frontend.
 
-### 3.3 Vercel Deployment Protection Notice
-During the audit of `https://proofhirex.vercel.app/`, unauthenticated curl requests returned:
+### 3.3 Vercel Deployment Protection Status (Verified Disabled)
+Vercel Authentication (Deployment Protection) is **disabled** on the production environment.
+Unauthenticated HTTP requests confirm direct delivery:
+```http
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
 ```
-HTTP/1.1 302 Found
-Location: https://vercel.com/sso-api?url=https%3A%2F%2Fproofhirex.vercel.app%2F
-```
-This indicates that **Vercel Authentication (Deployment Protection)** was enabled on the project dashboard. When deployment protection is enabled:
-1. Visitors who are not logged into the Vercel team are redirected to `vercel.com/login`.
-2. Automated security crawlers and wallet anti-phishing bots (e.g. Blockaid, PhishFort, MetaMask Phishing Detector) encounter a 302 redirect from a Web3 domain to an authentication gateway, which frequently triggers false-positive automated phishing warnings.
-3. **Action Required by Vercel Project Admin:**
-   In the Vercel Dashboard for `proofhirex`:
-   - Navigate to **Settings** -> **Deployment Protection**.
-   - Ensure **Vercel Authentication** is toggled to **Disabled** for the Production environment so that public Web3 users can load the frontend directly without an SSO redirect.
+Direct public access is confirmed: external reviewers (including stewards), automated evaluators, and Web3 visitors load the dApp directly without any SSO or login redirection.
+
 
 ### 3.4 Production Environment Variables
 Configured in `frontend/vercel.json`:
