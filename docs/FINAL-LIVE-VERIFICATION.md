@@ -3,6 +3,7 @@
 **Verification Date & Time:** September 21, 2026 02:15 UTC (Local: 03:15 BST)  
 **Target URL:** [https://proofhirex.vercel.app/](https://proofhirex.vercel.app/)  
 **GitHub Repository:** [https://github.com/JimmyOgb/proofhirex](https://github.com/JimmyOgb/proofhirex)  
+**Production Commit:** `HEAD` of `main`  
 **Contract Address:** `0x24cA909D9fa2a680F4a8004A5EB15e78a20e4d64`  
 **Network:** GenLayer StudioNet  
 **Chain ID:** `61999` (`0xf22f`)  
